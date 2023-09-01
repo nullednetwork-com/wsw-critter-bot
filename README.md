@@ -1,5 +1,5 @@
-# selenium-pom-base
-Base project for selenium - page object model in Python
+# webstudentwork critter bot
+Automates the critter game using the Selenium Page Object Model
 
 ## Requirements
 
