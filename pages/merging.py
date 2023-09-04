@@ -1,8 +1,8 @@
+import time
 import datetime
-from threading import Timer
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 from pages.base_page import BasePage
-
 
 class Merging(BasePage):
     """
@@ -43,7 +43,10 @@ class Merging(BasePage):
             self.wait.until(EC.text_to_be_present_in_element(self.locator.MERGE_NAME, "Merging"))
         merge_error = self.driver.find_elements(*self.locator.MERGE_ERROR)
         if not merge_error:
-            self.wait.until(EC.element_to_be_clickable(self.locator.MERGE_SUBMIT)).click()
+            try:
+                self.wait.until(EC.element_to_be_clickable(self.locator.MERGE_SUBMIT)).click()
+            except StaleElementReferenceException:
+                pass #: Silence staleness exception due to inconsistant page loading times
             return False
         merge_name = self.wait.until(EC.visibility_of_element_located(self.locator.MERGE_NAME)).text
         return [merge_name , datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")]
@@ -75,15 +78,21 @@ class Merging(BasePage):
             merge_name, merge_time = res
             self.merge_timers[merge_name] = [merge_time]
             print(f"[{merge_time}]: Ran out of '{merge_name.replace(' Merging', '')}' merges.")
+            # if ((_min + len(self.merge_timers)) > _max): #: This would be the regular method of checking when to sleep; but until directly accessing portals and merges without required ranks gets fixed, using text looks cleaner and is easier to understand.
+            if "Legendary" in merge_name:
+                print(f"[{merge_time}]: Ran out of merges, putting merge event loop to sleep for 1 hour.")
+                self.merge_timers = {}
+                time.sleep(3600)
 
     def start_merge_loop(self, event):
         """
-        Starts a merge event loop, runs the merge_all() class method, and starts a threading.Timer object to generate a perpetual timed loop of itself.
+        Starts the merge event loop.
         
         Args:
             event (:obj): Instance of the threading.Event class. It is used to
                 synchronize and communicate between different threads. Controls the
                 execution of the loop by setting and clearing the event flag.
         """
-        self.merge_all(3, 7, event)
-        Timer(0.3, self.start_merge_loop, [event]).start()
+        while True:
+            self.merge_all(3, 7, event)
+            
